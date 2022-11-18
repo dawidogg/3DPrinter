@@ -1,0 +1,23 @@
+{
+    "files.associations": {
+        "any": "cpp",
+        "barrier": "cpp",
+        "bit": "cpp",
+        "charconv": "cpp",
+        "codecvt": "cpp",
+        "compare": "cpp",
+        "condition_variable": "cpp",
+        "cstddef": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "optional": "cpp",
+        "future": "cpp",
+        "limits": "cpp",
+        "memory": "cpp",
+        "mutex": "cpp",
+        "new": "cpp",
+        "functional": "cpp",
+        "regex": "cpp"
+    }
+}
