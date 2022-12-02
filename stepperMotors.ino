@@ -1,148 +1,165 @@
 #include <AccelStepper.h>
 
-#define VERTICAL_SENSOR_PIN 1
-#define HORIZONTAL_SENSOR_PIN 2
+#define TOP_SENSOR_PIN -1
+#define BOTTOM_SENSOR_PIN -1 
+#define HORIZONTAL_SENSOR_PIN -1
 
-#define PRINTBED_PIN_1 3 
-#define PRINTBED_PIN_2 4 
-#define PRINTBED_PIN_3 5
+#define X_ROT_STEPPER_PIN_1 54 // Step pin
+#define X_ROT_STEPPER_PIN_2 55 // Direction pin
+#define X_ROT_STEPPER_PIN_3 38 // Enable pin
 
-#define YSTEPPER_PIN_1 6 
-#define YSTEPPER_PIN_2 7 
-#define YSTEPPER_PIN_3 8 
+#define Y_STEPPER_PIN_1 60 // Step pin
+#define Y_STEPPER_PIN_2 61 // Direction pin
 
-#define WIPER_PIN_1 9
-#define WIPER_PIN_2 10
-#define WIPER_PIN_3 11
+#define Z_STEPPER_PIN_1 46 // Step pin
+#define Z_STEPPER_PIN_2 48 // Direction pin
 
-const int PRINTBED_SPEED = 50;
-const int WIPER_SPEED = 50;
-const int YSTEPPER_SPEED = 50;
+#define SERVO_PIN -1
+
+const int X_ROT_STEPPER_SPEED = 50;
+const int Y_STEPPER_SPEED = 50;
+const int Z_STEPPER_SPEED = 50;
+const int SERVO_SPEED = 50;
 
 const int xLimit = 100;
 const int yLimit = 4000;
 int zLimit = 40000;
-const int zDecrement = 10;
+
+const int layerThickness = 10;
 
 int xCurrent;
 int yCurrent;
 int zCurrent;
 
-AccelStepper printbedM(DRIVER, PRINTBED_PIN_1, PRINTBED_PIN_2, PRINTBED_PIN_3);
-AccelStepper ystepperM(DRIVER, YSTEPPER_PIN_1, YSTEPPER_PIN_2, YSTEPPER_PIN_3);
-AccelStepper wiperM(DRIVER, WIPER_PIN_1, WIPER_PIN_2, WIPER_PIN_3);
+AccelStepper xRotStepperM(AccelStepper::DRIVER, X_ROT_STEPPER_PIN_1, X_ROT_STEPPER_PIN_2);
+AccelStepper yStepperM(AccelStepper::DRIVER, Y_STEPPER_PIN_1, Y_STEPPER_PIN_2);
+AccelStepper zStepperM(AccelStepper::DRIVER, Z_STEPPER_PIN_1, Z_STEPPER_PIN_2);
 
 enum {
-    CALIBRATION, WIPER_MOVE, YSTEPPER_MOVE, PRINTBED_MOVE, UVFLASH  
+    HOMING, CALIBRATION, WIPER_MOVE, Y_STEPPER_MOVE, Z_STEPPER_MOVE, UVFLASH  
 } mode;
+
+enum Dir {
+    FORWARD = 1, BACKWARD = -1
+};
 
 void nextMode() {
     switch (mode) {
+        case HOMING: mode = CALIBRATION; break;
         case CALIBRATION: mode = WIPER_MOVE; break;
-        case WIPER_MOVE: mode = YSTEPPER_MOVE; break;
-        case YSTEPPER_MOVE: mode = PRINTBED_MOVE; break;
-        case PRINTBED_MOVE: mode = UVFLASH; break;
-        case UVFLASH: mode = PRINTBED_MOVE; break;
-        case PRINTBED_MOVE: mode = WIPER_MOVE; break; 
-        default: mode = CALIBRATION; break; 
+        case WIPER_MOVE: mode = Y_STEPPER_MOVE; break;
+        case Y_STEPPER_MOVE: mode = Z_STEPPER_MOVE; break;
+        case Z_STEPPER_MOVE: mode = UVFLASH; break;
+        case UVFLASH: mode = Z_STEPPER_MOVE; break;
+        case Z_STEPPER_MOVE: mode = WIPER_MOVE; break; 
+        default: mode = HOMING; break; 
     }
 }
 
-enum Dir {
-    FORWARD = 1,
-    BACKWARD = -1
-};
-
+// Stucture for controlling steppers with additional functions
 struct {
+    AccelStepper m;
     int speed;
     int direction;
-    bool calibrated;
+    bool homed;
     void updateDirection(int d=direction) {
         direction = d;
-        printbedM.setSpeed(speed*direction);
+        m.setSpeed(speed*direction);
     }
     void reverseDirection() {
         direction *= -1;
-        printbedM.setSpeed(speed*direction);
+        m.setSpeed(speed*direction);
     }
-} printbedC, wiperC, ystepperC;
+} xRotStepper, yStepper, zStepper;
 
 void setup() {
-    pinMode(VERTICAL_SENSOR_PIN, INPUT);
+    pinMode(TOP_SENSOR_PIN, INPUT);
+    pinMode(BOTTOM_SENSOR_PIN, INPUT);
     pinMode(HORIZONTAL_SENSOR_PIN, INPUT);
     
-    pinMode(PRINTBED_PIN_1, OUTPUT);
-    pinMode(PRINTBED_PIN_2, OUTPUT);
-    pinMode(PRINTBED_PIN_3, OUTPUT);
+    // Setting motor, speed, direction and homed
+    xRotStepper = {xRotStepperM, X_ROT_STEPPER_SPEED, FORWARD, false};
+    yStepper = {yStepper.m, Y_STEPPER_SPEED, BACKWARD, false}; // backward for homing
+    zStepper = {zStepper.m, Z_STEPPER_SPEED, BACKWARD, false}; // backward for homing
 
-    pinMode(YSTEPPER_PIN_1, OUTPUT);
-    pinMode(YSTEPPER_PIN_2, OUTPUT);
-    pinMode(YSTEPPER_PIN_3, OUTPUT);
-    
-    pinMode(WIPER_PIN_1, OUTPUT);
-    pinMode(WIPER_PIN_2, OUTPUT);
-    pinMode(WIPER_PIN_3, OUTPUT);
+    xRotStepper.m.setEnablePin(X_ROT_STEPPER_PIN_3);
+    xRotStepper.m.enableOutputs();
 
-    printbedM.setMaxSpeed(PRINTBED_SPEED);
-    ystepperM.setMaxSpeed(YSTEPPER_SPEED);
-    wiperM.setMaxSpeed(WIPER_SPEED);
-    
-    // Setting speed, direction and calibrated
-    printbedC = {PRINTBED_SPEED, BACKWARD, false}; // backward for calibration
-    ystepperC = {YSTEPPER_SPEED, BACKWARD, false}; // backward for calibration
-    wiperC = {WIPER_SPEED, FORWARD, true};
+    xRotStepper.m.setMaxSpeed(X_ROT_STEPPER_SPEED);
+    yStepper.m.setMaxSpeed(Y_STEPPER_SPEED);
+    zStepper.m.setMaxSpeed(Z_STEPPER_SPEED);
 
-    printbedC.updateDirection();
-    ystepperC.updateDirection();
-    wiperC.updateDirection();
+    xRotStepper.updateDirection();
+    yStepper.updateDirection();
+    zStepper.updateDirection();
 
-    mode = CALIBRATION;
+    mode = HOMING;
 }
 
-void calibration() {
-    if (digitalRead(VERTICAL_SENSOR_PIN) == 1)
-            printbedC.calibrated = true; 
-    if (digitalRead(VERTICAL_SENSOR_PIN) == 1)
-        ystepperC.calibrated = true; 
+void homing() {
+    if (digitalRead(HORIZONTAL_SENSOR_PIN) == HIGH)
+        yStepper.homed = true; 
+    if (digitalRead(TOP_SENSOR_PIN) == HIGH)
+        zStepper.homed = true; 
 
-    if (!printbedC.calibrated) printbedM.run();
-    if (!ystepperC.calibrated) ystepperM.run();
+    if (!yStepper.homed) yStepper.m.runSpeed();
+    if (!zStepper.homed) zStepper.m.runSpeed();
 
-    if (printbedC.calibrated && ystepperC.calibrated) {
+    if (yStepper.homed && zStepper.homed) {
         yCurrent = 0;
         zCurrent = 0;
         nextMode();
     }
 }
 
-void wiper_move() {
-    if (wiperC.direction == FORWARD)
-        wiperM.moveTo(xLimit);
-    if (wiperC.direction == BACKWARD)
-        wiperM.moveTo(0);
-    wiperC.reverseDirection();
-    nextMode();
-}
+bool calibrationSetup = false;
+void calibration() {
+    if (!calibrationSetup) {
+        xRotStepperM.disableOutputs();
+        zStepper.updateDirection(FORWARD);
+        calibrationSetup = true;
+    }
 
-void ystepper_move() {
-    ystepperM.runSpeed();
-    yCurrent += ystepperC.direction;
-    if ((ystepperC.direction == FORWARD && yCurrent >= yLimit) || 
-    (ystepperC.direction == BACKWARD && yCurrent <= 0)) {
-        ystepperC.reverseDirection();
+    zStepper.m.runSpeed();
+    if (digitalRead(BOTTOM_SENSOR_PIN) == HIGH) {
+        zStepper.updateDirection(BACKWARD);
+        xRotStepperM.enableOutputs();
+    }
+
+    if (digitalRead(TOP_SENSOR_PIN) == HIGH && zStepper.direction == BACKWARD) {
+        zStepper.reverseDirection();
         nextMode();
     }
 }
 
-void printbed_move() {
-    printbedM.runSpeed();
-    zCurrent += printbedC.direction;
-    if ((printbedC.direction == FORWARD && zCurrent >= zLimit) || 
-    (printbedC.direction == BACKWARD && zCurrent <= 0)) {
-        printbedC.reverseDirection();
+void wiperMove() {
+    /*if (wiperC.direction == FORWARD)
+        wiperM.moveTo(xLimit);
+    if (wiperC.direction == BACKWARD)
+        wiperM.moveTo(0);
+    wiperC.reverseDirection();*/
+    nextMode();
+}
+
+void yStepper.move() {
+    yStepper.m.runSpeed();
+    yCurrent += yStepper.direction;
+    if ((yStepper.direction == FORWARD && yCurrent >= yLimit) || 
+    (yStepper.direction == BACKWARD && yCurrent <= 0)) {
+        yStepper.reverseDirection();
         nextMode();
-        if (printbedC.direction == FORWARD)
-            zLimit -= zDecrement;
+    }
+}
+
+void zStepper.move() {
+    zStepper.m.runSpeed();
+    zCurrent += zStepper.direction;
+    if ((zStepper.direction == FORWARD && zCurrent >= zLimit) || 
+    (zStepper.direction == BACKWARD && zCurrent <= 0)) {
+        zStepper.reverseDirection();
+        nextMode();
+        if (zStepper.direction == FORWARD)
+            zLimit -= layerThickness;
     }
 }
 
@@ -152,10 +169,11 @@ void uvflash() {
 
 void loop() {
     switch(mode) {
+        case HOMING: homing(); break;
         case CALIBRATION: calibration(); break;
-        case WIPER_MOVE: wiper_move(); break;
-        case YSTEPPER_MOVE: ystepper_move(); break;
-        case PRINTBED_MOVE: printbed_move(); break;
+        case WIPER_MOVE: wiperMove(); break;
+        case Y_STEPPER_MOVE: yStepper.move(); break;
+        case Z_STEPPER_MOVE: zStepper.move(); break;
         case UVFLASH: uvflash(); break;
     }
 }
