@@ -1,4 +1,5 @@
 #include <AccelStepper.h>
+#include <Servo.h>
 
 #define TOP_SENSOR_PIN -1
 #define BOTTOM_SENSOR_PIN -1 
@@ -8,18 +9,23 @@
 #define X_ROT_STEPPER_PIN_2 55 // Direction pin
 #define X_ROT_STEPPER_PIN_3 38 // Enable pin
 
-#define Y_STEPPER_PIN_1 60 // Step pin
-#define Y_STEPPER_PIN_2 61 // Direction pin
+#define Y_STEPPER_LEFT_PIN_1 60 // Step pin
+#define Y_STEPPER_LEFT_PIN_2 61 // Direction pin
+
+#define Y_STEPPER_RIGHT_PIN_1 60 // Step pin
+#define Y_STEPPER_RIGHT_PIN_2 61 // Direction pin
 
 #define Z_STEPPER_PIN_1 46 // Step pin
 #define Z_STEPPER_PIN_2 48 // Direction pin
 
-#define SERVO_PIN -1
+#define SERVO_LEFT_PIN -1
+#define SERVO_RIGHT_PIN -1
 
 const int X_ROT_STEPPER_SPEED = 50;
 const int Y_STEPPER_SPEED = 50;
 const int Z_STEPPER_SPEED = 50;
-const int SERVO_SPEED = 50;
+const int servoCloseAngle = 0;
+const int servoOpenAngle = 90;
 
 const int xLimit = 100;
 const int yLimit = 4000;
@@ -32,11 +38,14 @@ int yCurrent;
 int zCurrent;
 
 AccelStepper xRotStepperM(AccelStepper::DRIVER, X_ROT_STEPPER_PIN_1, X_ROT_STEPPER_PIN_2);
-AccelStepper yStepperM(AccelStepper::DRIVER, Y_STEPPER_PIN_1, Y_STEPPER_PIN_2);
+AccelStepper yStepperLeftM(AccelStepper::DRIVER, Y_STEPPER_PIN_1, Y_STEPPER_PIN_2);
+AccelStepper yStepperRightM(AccelStepper::DRIVER, Y_STEPPER_PIN_1, Y_STEPPER_PIN_2);
 AccelStepper zStepperM(AccelStepper::DRIVER, Z_STEPPER_PIN_1, Z_STEPPER_PIN_2);
 
+Servo servoLeft, servoRight;
+
 enum {
-    HOMING, CALIBRATION, WIPER_MOVE, Y_STEPPER_MOVE, Z_STEPPER_MOVE, UVFLASH  
+    HOMING, CALIBRATION, Y_STEPPER_LEFT_MOVE, Z_STEPPER_MOVE, UVFLASH  
 } mode;
 
 enum Dir {
@@ -56,42 +65,18 @@ void nextMode() {
     }
 }
 
-// Stucture for controlling steppers with additional functions
-struct {
-    AccelStepper m;
-    int speed;
-    int direction;
-    bool homed;
-    void updateDirection(int d=direction) {
-        direction = d;
-        m.setSpeed(speed*direction);
-    }
-    void reverseDirection() {
-        direction *= -1;
-        m.setSpeed(speed*direction);
-    }
-} xRotStepper, yStepper, zStepper;
-
 void setup() {
     pinMode(TOP_SENSOR_PIN, INPUT);
     pinMode(BOTTOM_SENSOR_PIN, INPUT);
     pinMode(HORIZONTAL_SENSOR_PIN, INPUT);
-    
-    // Setting motor, speed, direction and homed
-    xRotStepper = {xRotStepperM, X_ROT_STEPPER_SPEED, FORWARD, false};
-    yStepper = {yStepper.m, Y_STEPPER_SPEED, BACKWARD, false}; // backward for homing
-    zStepper = {zStepper.m, Z_STEPPER_SPEED, BACKWARD, false}; // backward for homing
+   
+    xRotStepperM.setEnablePin(X_ROT_STEPPER_PIN_3);
+    xRotStepperM.enableOutputs();
 
-    xRotStepper.m.setEnablePin(X_ROT_STEPPER_PIN_3);
-    xRotStepper.m.enableOutputs();
-
-    xRotStepper.m.setMaxSpeed(X_ROT_STEPPER_SPEED);
-    yStepper.m.setMaxSpeed(Y_STEPPER_SPEED);
-    zStepper.m.setMaxSpeed(Z_STEPPER_SPEED);
-
-    xRotStepper.updateDirection();
-    yStepper.updateDirection();
-    zStepper.updateDirection();
+    xRotStepperM.setMaxSpeed(X_ROT_STEPPER_SPEED);
+    yLeftStepperM.setMaxSpeed(Y_STEPPER_SPEED);    
+    yRightStepperM.setMaxSpeed(Y_STEPPER_SPEED);
+    zStepperM.setMaxSpeed(Z_STEPPER_SPEED);
 
     mode = HOMING;
 }
@@ -132,18 +117,9 @@ void calibration() {
     }
 }
 
-void wiperMove() {
-    /*if (wiperC.direction == FORWARD)
-        wiperM.moveTo(xLimit);
-    if (wiperC.direction == BACKWARD)
-        wiperM.moveTo(0);
-    wiperC.reverseDirection();*/
-    nextMode();
-}
-
-void yStepper.move() {
-    yStepper.m.runSpeed();
-    yCurrent += yStepper.direction;
+void yLeftStepperMove() {
+    yLeftStepperM.runSpeed();
+    yLeftCurrent += yStepper.direction;
     if ((yStepper.direction == FORWARD && yCurrent >= yLimit) || 
     (yStepper.direction == BACKWARD && yCurrent <= 0)) {
         yStepper.reverseDirection();
@@ -163,6 +139,22 @@ void zStepper.move() {
     }
 }
 
+void servoLeftOpen() {
+    servoLeft.write(servoOpenAngle);
+}
+
+void servoLeftClose() {
+    servoLeft.write(servoCloseAngle);
+}
+
+void servoRightOpen() {
+    servoRight.write(servoOpenAngle);
+}
+
+void servoRightClose() {
+    servoRight.write(servoCloseAngle);
+}
+
 void uvflash() {
 
 }
@@ -171,7 +163,6 @@ void loop() {
     switch(mode) {
         case HOMING: homing(); break;
         case CALIBRATION: calibration(); break;
-        case WIPER_MOVE: wiperMove(); break;
         case Y_STEPPER_MOVE: yStepper.move(); break;
         case Z_STEPPER_MOVE: zStepper.move(); break;
         case UVFLASH: uvflash(); break;
