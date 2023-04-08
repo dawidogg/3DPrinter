@@ -86,6 +86,8 @@ void checkEnables() {
   Serial.println(digitalRead(STEPPER_4_ENABLE));
 }
 
+int direction = -1;
+
 #ifdef DEMO
 void printing() {
   /* Pointers to motors and pump pin. The algorithm is same * 
@@ -116,9 +118,11 @@ void printing() {
 
   currentServo->write(SERVO_SPREAD_DEGREE);
   //currentStepper->runToNewPosition(x1);
-  currentStepper->setSpeed(HORIZONTAL_STEPPER_SPEED);
-  for (int i = 0; i < 10000; i++)
-    currentStepper->runSpeed();
+  if (Serial.available()) direction = Serial.parseInt();
+  currentStepper->setSpeed(HORIZONTAL_STEPPER_SPEED*direction);
+  currentStepper->runSpeed();
+  
+  return;  
 
   Serial.println("Horizontal stepered arrived at x1");
 

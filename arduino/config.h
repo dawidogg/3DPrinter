@@ -38,7 +38,7 @@
 #define PUMP_2 -1
 
 const int SERIAL_SPEED = 9600;
-const int HORIZONTAL_STEPPER_SPEED = 100;
+const int HORIZONTAL_STEPPER_SPEED = 200;
 const int STEPPER_1_SPEED = 100;
 const int STEPPER_2_SPEED = 100;
 const int SERVO_SPREAD_DEGREE = 90;
