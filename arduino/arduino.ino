@@ -54,7 +54,7 @@ enum Mode{
   HOMING,
   CALIBRATION,
   PRINTING
-} mode;
+} mode = PRINTING;
 
 Mode modeOrder[MODE_COUNT][2] = {
   {HOMING, CALIBRATION},
@@ -73,9 +73,9 @@ void nextMode() {
 /*-----------------------------Loop-------------------------------*/
 void loop() {
   switch (mode) {
-    case HOMING: homing(); break;
-    case CALIBRATION: calibration(); break;
-    case PRINTING: printing(); break;
+    case HOMING:  Serial.println("Entering homing mode"); homing(); break;
+    case CALIBRATION:  Serial.println("Entering calibration mode"); calibration(); break;
+    case PRINTING:  Serial.println("Entering printing mode"); printing(); break;
     default: mode = HOMING; break;
   }
 }
