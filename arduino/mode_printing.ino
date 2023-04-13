@@ -1,6 +1,6 @@
 #include "config.h"
 
-int slurryTurn = 2;
+int slurryTurn = 1;
 
 #ifndef DEMO
 void printing() {
@@ -102,11 +102,11 @@ void printing() {
 
   // Assigning current variables
   if (slurryTurn == 1) {
-    Serial.println("Selecting stepper 3 and servo 1");
+    //Serial.println("Selecting stepper 3 and servo 1");
     currentStepper = &stepper3;
     currentServo = &servo1;
   } else if (slurryTurn == 2) {
-    Serial.println("Selecting stepper 4 and servo 2");
+    //Serial.println("Selecting stepper 4 and servo 2");
     currentStepper = &stepper4;
     currentServo = &servo2;
   }
@@ -114,12 +114,14 @@ void printing() {
   // Algorithm described by teammates
   stepper2.runToNewPosition(0); 
 
-  Serial.println("Stepper 2 arrived at 0");
+  //Serial.println("Stepper 2 arrived at 0");
 
   currentServo->write(SERVO_SPREAD_DEGREE);
   //currentStepper->runToNewPosition(x1);
-  if (Serial.available()) direction = Serial.parseInt();
-  currentStepper->setSpeed(HORIZONTAL_STEPPER_SPEED*direction);
+  if (Serial.available()) {
+    direction = Serial.parseInt();
+    currentStepper->setSpeed(HORIZONTAL_STEPPER_SPEED*direction);
+  }
   currentStepper->runSpeed();
   
   return;  
