@@ -2,8 +2,7 @@
  * Author: Denis Davidoglu                                          *
  *                                                                  *
  * This is an independetly developed C-compatible Arduino library   *
- * for driving stepper motors with acceleration and deceleration.   *
- * Currently not tested.                                            */
+ * for driving stepper motors with acceleration and deceleration.   */
 
 #include <Arduino.h>
 
@@ -11,9 +10,9 @@
 #define TAM_STEP
 
 // Ease-in ease-out parameters.
-const int alpha = 2, beta = 0.07;
+const int alpha = 1.5;
 // Number of iterations to accelerate/decelerate.
-const int accelerationSteps = 50;
+extern int accelerationSteps;
 
 typedef struct {
     // Name that will be shown in debug messages.

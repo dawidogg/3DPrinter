@@ -9,6 +9,7 @@
 
 #include "ITUTAM_Stepper.h"
 #include <Arduino.h>
+#include <Servo.h> 
 
 // https://reprap.org/wiki/RAMPS_1.4#Pins
 
@@ -38,40 +39,56 @@
 #define E0_DIR_PIN         28
 #define E0_ENABLE_PIN      24
 
+// Servo 1
+#define SERVO1_PIN         11
+
 motor stepper1 = {"Stepper1", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, Z_MIN_PIN, Z_MAX_PIN, 1000, 0};
 motor stepper2 = {"Stepper2", E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, -1, -1, 1000, 0};
-motor stepper3 = {"Stepper3", X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MIN_PIN, X_MAX_PIN, 1000, 0};
-motor stepper4 = {"Stepper4", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MIN_PIN, Y_MAX_PIN, 1000, 0};
+motor stepper3 = {"Stepper3", X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MIN_PIN, X_MAX_PIN, 300, 0};
+motor stepper4 = {"Stepper4", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MIN_PIN, Y_MAX_PIN, 300, 0};
+
+int accelerationSteps = 100;
+
+Servo servo1;
 
 void homing() {
     findMargins(&stepper3);
-    findMargins(&stepper4);
-    findMargins(&stepper1);
+    //findMargins(&stepper4);
 }
 
 void setup() {
     Serial.begin(9600);
     enableDebugMessages = true;
-    setupPins(&stepper1);
-    setupPins(&stepper2);
+    //setupPins(&stepper1);
+    //setupPins(&stepper2);
     setupPins(&stepper3);
     setupPins(&stepper4);
-    
+    servo1.attach(SERVO1_PIN);
+
+    servo1.write(0);
     homing();
+    //stepper3.pos =  0;
+    //stepper3.traversableLength = 500;
     delay(1000);
 }
 
 void loop() {
-    move(&stepper3, 0);
-    delay(1000);
+    servo1.write(90);
+    delay(200);
     move(&stepper3, stepper3.traversableLength);
+    servo1.write(0);
     delay(1000);
-    move(&stepper4, 0);
+    servo1.write(90);
+    delay(200);
+    move(&stepper3, 0);
+    servo1.write(0);
     delay(1000);
-    move(&stepper4, stepper4.traversableLength);
-    delay(1000);
-    move(&stepper1, 0);
+    //move(&stepper4, 0);
+    //delay(1000);
+    //move(&stepper4, stepper4.traversableLength);
+    //delay(1000);
+    /*move(&stepper1, 0);
     delay(1000);
     move(&stepper1, stepper1.traversableLength);
-    delay(1000);
+    delay(1000);*/
 }

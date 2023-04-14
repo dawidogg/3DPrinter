@@ -9,7 +9,7 @@ bool enableDebugMessages = false;
 double ease_in_ease_out(double x) {
     if (x >= 1) return 1;
     if (x <= 0) return 0;
-    double result = pow(x, alpha) / (pow(x, alpha) + pow(1 - x, alpha)) + beta;
+    double result = pow(x, alpha) / (pow(x, alpha) + pow(1 - x, alpha));
     if (result < 0) return 0;
     if (result > 1) return 1;
     return result;
@@ -50,19 +50,21 @@ void updatePos(motor *m) {
 }
 
 void constantMove(motor *m) {
+    int _delay = max(m->delay, 1);
     digitalWrite(m->step, HIGH);
-    delayMicroseconds(m->delay);
+    delayMicroseconds(_delay);
     digitalWrite(m->step, LOW);
-    delayMicroseconds(m->delay);
+    delayMicroseconds(_delay);
     updatePos(m);
 }
 
 void smoothMove(motor *m, double i) {
     double f = ease_in_ease_out(i/(double)accelerationSteps);
+    int _delay = max((int)((f+1)*m->delay), 1);
     digitalWrite(m->step, HIGH);
-    delayMicroseconds((f+1)*m->delay);
+    delayMicroseconds(_delay);
     digitalWrite(m->step, LOW);
-    delayMicroseconds((f+1)*m->delay);
+    delayMicroseconds(_delay);
     updatePos(m);
 }
 
@@ -92,6 +94,8 @@ void move(motor *m, int target) {
         Serial.print(" to ");
         Serial.println(target);
     }
+    if (abs(target - m->pos) < 2*accelerationSteps)
+        return;
     enable(m);
     setDirection(m, (m->pos > target)? 0 : 1);
     accelerate(m);
@@ -111,6 +115,8 @@ void setupPins(motor *m) {
 }
 
 void findMargins(motor *m) {
+    int delaySave = m->delay;
+    m->delay = (m->delay * 2);
     if (enableDebugMessages) {
         Serial.print(m->name);
         Serial.println(" is searching for margins");
@@ -139,4 +145,6 @@ void findMargins(motor *m) {
         Serial.print(m->name);
         Serial.println(" found maximum margin");
     }
+
+    m->delay = delaySave;
 }
