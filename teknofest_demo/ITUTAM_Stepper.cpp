@@ -52,7 +52,7 @@ void updatePos(motor *m) {
 void constantMove(motor *m) {
     int _delay = max(m->delay, 1);
     digitalWrite(m->step, HIGH);
-    delayMicroseconds(_delay);
+    delayMicroseconds(10);
     digitalWrite(m->step, LOW);
     delayMicroseconds(_delay);
     updatePos(m);
@@ -62,7 +62,7 @@ void smoothMove(motor *m, double i) {
     double f = ease_in_ease_out(i/(double)accelerationSteps);
     int _delay = max((int)((f+1)*m->delay), 1);
     digitalWrite(m->step, HIGH);
-    delayMicroseconds(_delay);
+    delayMicroseconds(10);
     digitalWrite(m->step, LOW);
     delayMicroseconds(_delay);
     updatePos(m);
@@ -114,26 +114,32 @@ void setupPins(motor *m) {
     disable(m);
 }
 
-void findMargins(motor *m) {
+void findMinMargin(motor *m) {
     int delaySave = m->delay;
-    m->delay = (m->delay * 2);
-    if (enableDebugMessages) {
-        Serial.print(m->name);
-        Serial.println(" is searching for margins");
-    }
+    m->delay = (m->delay * 4);
     const int sensorTrigger = HIGH;
-
+    
     enable(m);
     setDirection(m, 0);
     while (digitalRead(m->min) != sensorTrigger)
         constantMove(m);
     m->pos = 0;
+    disable(m);
 
     if (enableDebugMessages) {
         Serial.print(m->name);
-        Serial.println(" found minimum margin");
+        Serial.println(" found minimum margin and set as zero.");
     }
 
+    m->delay = delaySave;
+}
+
+void findMaxMargin(motor *m) {
+    int delaySave = m->delay;
+    m->delay = (m->delay * 4);
+    const int sensorTrigger = HIGH;
+
+    enable(m);
     setDirection(m, 1);
     accelerate(m);
     while (digitalRead(m->max) != sensorTrigger)
@@ -143,8 +149,20 @@ void findMargins(motor *m) {
 
     if (enableDebugMessages) {
         Serial.print(m->name);
-        Serial.println(" found maximum margin");
+        Serial.println(" found maximum margin, traversable length: ");
+        Serial.println(m->traversableLength);
     }
 
     m->delay = delaySave;
+}
+
+void findMargins(motor *m) {
+    if (enableDebugMessages) {
+        Serial.print(m->name);
+        Serial.println(" is searching for margins");
+    }
+    findMinMargin(m);
+    delay(50);
+    findMaxMargin(m);
+    delay(50);
 }

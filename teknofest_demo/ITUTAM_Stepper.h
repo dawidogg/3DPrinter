@@ -56,6 +56,8 @@ void decelerate(motor*);
 void move(motor*, int);
 // Sets modes as input and output for pins which define motor.
 void setupPins(motor*);
+void findMinMargin(motor *m);
+void findMaxMargin(motor *m);
 // Can be called in the beginning of execution to find the zero position and distance between min and max sensors.
 void findMargins(motor*);
 
