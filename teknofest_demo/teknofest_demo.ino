@@ -60,7 +60,7 @@ const int stepper1Length = 8000;
 const int stepper2Length = 100;
 
 bool turn = 1;  // 1 ise stepper3 ile servo1 önce çalışır,
-                // 0 ise stepper3 ile servo2 önce calışır 
+                // 0 ise stepper4 ile servo2 önce calışır 
 
 // Servo angles
 const int closedAngle = 180;
