@@ -116,7 +116,7 @@ void setupPins(motor *m) {
 
 void findMinMargin(motor *m) {
     int delaySave = m->delay;
-    m->delay = (m->delay * 4);
+    m->delay = (m->delay * 2);
     const int sensorTrigger = HIGH;
     
     enable(m);
@@ -136,7 +136,7 @@ void findMinMargin(motor *m) {
 
 void findMaxMargin(motor *m) {
     int delaySave = m->delay;
-    m->delay = (m->delay * 4);
+    m->delay = (m->delay * 2);
     const int sensorTrigger = HIGH;
 
     enable(m);
