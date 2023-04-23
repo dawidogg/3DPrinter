@@ -44,29 +44,44 @@
 #define SERVO1_PIN         11
 #define SERVO2_PIN         6
 
-motor stepper1 = {"Stepper1", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, X_MIN_PIN, -1, 600, 0};
-motor stepper2 = {"Stepper2", E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, -1, -1, 1200, 0};
-motor stepper3 = {"Stepper3", X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MIN_PIN, -1, 900, 0};
-motor stepper4 = {"Stepper4", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, X_MIN_PIN, -1, 900, 0};
+// Hız ayarı. Minimum 600 (en hızlı).
+const int stepper1Delay = 600;
+const int stepper2Delay = 1200;
+const int stepper3Delay = 900;
+const int stepper4Delay = 900;
 
-int accelerationSteps = 100;
+int accelerationSteps = 100; // ivmelenmenin süresi
 
-const int printingAreaMin = 400;
-const int printingAreaMax = 2400;
+const int printingAreaMin3 = 400;
+const int printingAreaMin4 = 400;
+const int printingAreaMax3 = 2400;
+const int printingAreaMax4 = 2400;
+const int stepper1Length = 8000;
+const int stepper2Length = 100;
 
-Servo servo1, servo2;
+bool turn = 1;  // 1 ise stepper3 ile servo1 önce çalışır,
+                // 0 ise stepper3 ile servo2 önce calışır 
+
+// Servo angles
 const int closedAngle = 180;
 const int openAngle = 0;
 
+Servo servo1, servo2;
+
+motor stepper1 = {"Stepper1", Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, Z_MIN_PIN, -1, stepper1Delay};
+motor stepper2 = {"Stepper2", E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, -1, -1, stepper2Delay};
+motor stepper3 = {"Stepper3", X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MIN_PIN, -1, stepper3Delay};
+motor stepper4 = {"Stepper4", Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MIN_PIN, -1, stepper4Delay};
+
 void homing() {
     findMinMargin(&stepper1);
-    stepper1.traversableLength = 8000;
+    stepper1.traversableLength = stepper1Length;
     delay(1000);
     findMinMargin(&stepper3);
-    stepper3.traversableLength = printingAreaMax;
+    stepper3.traversableLength = printingAreaMax3;
     delay(1000);
     findMinMargin(&stepper4);
-    stepper4.traversableLength = printingAreaMax;
+    stepper4.traversableLength = printingAreaMax4;
     delay(1000);
 }
 
@@ -84,25 +99,45 @@ void setup() {
     servo2.write(closedAngle);
 
     stepper2.pos = 0;
-    stepper2.traversableLength = 1000;
+    stepper2.traversableLength = stepper2Length;
     homing();
 }
 
-bool turn = 1;
-
 void loop() {
+    // To avoid writing the same code for stepper3 with servo1, 
+    // and stepper4 with servo2, they are referred to as current
+    // stepper and current servo.
     turn = 1 - turn;
     Servo *currentServo;
     motor *currentStepper;
+    int printingAreaMin, printingAreaMax;
 
     if (turn == 0) {
         currentServo = &servo1;
         currentStepper = &stepper3;
+        printingAreaMin = printingAreaMin3;
+        printingAreaMax = printingAreaMax3;
     }
     if (turn == 1) {
         currentServo = &servo2;
         currentStepper = &stepper4;
+        printingAreaMin = printingAreaMin4;
+        printingAreaMax = printingAreaMax4;
     }
+
+    // Change algorithm below.
+    //
+    // move(motor*, int) fonksiyonu birinci parametre olarak "motor" tipi değil, 
+    // "motor*", yani motora pointer tipini kabul ediyor. currentStepper zaten
+    // pointer olarak tanımlandığından move(currentStepper, position) şeklinde yazılır.
+    // Fonksiyona "motor" tipini vermek için değişkenin başına & işaretini koymak lazım.
+    // Örnek: move(&stepper1, position). İkinci parametre olarak hedef konumu verilir. 
+    //
+    // Benzer şekilde currentServo, "Servo" tipi değil, "Servo*", yani servoya pointerdır.
+    // Servo objesinin herhangi bir fonksiyonunu pointerinden çağırmak için nokta yerine
+    // ok kullanılır. Örnek: currentServo->write(angle).
+    //
+    // C/C++'ın en zor konusu olsa da bu durumda iki kere algoritmayı tekrar yazmamış oluyorsunuz :)
 
     move(currentStepper, printingAreaMax);
     currentServo->write(openAngle);
